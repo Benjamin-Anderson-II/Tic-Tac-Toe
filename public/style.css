@@ -1,6 +1,6 @@
 html, body {
 	font-family: sans-serif;
-	height: 100%;
+	height: 50%;
 }
 
 #play-space{
@@ -63,4 +63,19 @@ html, body {
 }
 #bot-right {
 	border-style: solid none none solid;
+}
+
+.connected, .ready {
+	font-weight: normal;
+}
+
+.connected span, .ready span {
+	display: inline-block;
+	width: 1rem;
+	height: 1rem;
+	background: red;
+}
+
+span.green {
+	background: green;
 }
