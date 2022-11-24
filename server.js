@@ -2,19 +2,54 @@ const express = require("express")
 const path = require('path')
 const http = require('http')
 const PORT = process.env.PORT || 3000
-const socketio =require('socket.io')
+const socketio = require('socket.io')
 const app = express()
 const server = http.createServer(app)
 const io = socketio(server)
+const expressHandlebars = require('express-handlebars')
+const serverData = require('./serverData.json')
+
+//register handlebars engine with express
+app.engine('handlebars', expressHandlebars.engine({
+	defaultLayout: "main"
+}));
+app.set('view engine', 'handlebars');
 
 //set static folder
-app.use(express.static(path.join(__dirname, "public")))
+app.use(express.static('public/'));
 
 //start server
-server.listen(PORT, () => console.log('Server running on port', PORT))
+server.listen(PORT, () => console.log('== Server running on port', PORT));
+
+//Front Page
+app.get('/', (req, res, next) => {
+	res.redirect('/home')
+});
+app.get('/home', (req, res, next) => {
+	res.status(200).render('frontPage');
+})
+
+//Solo Play Page
+app.get('/solo', (req, res, next) => {
+	res.status(200).render('gamePage', {multiplayer: false, p1: "User", p2: "Computer"});
+});
+
+//Multiplayer Page
+app.get('/multiplayer/:n', (req, res, next) => {
+	var n = parseInt(req.params.n);
+	if(serverData[n]){
+		console.log("  -- Game Lobby", n, "now in session.");
+		res.status(200).render('gamePage', {multiplayer: true, p1: "Player 1", p2: "Player 2"/*, board: serverData[n]*/});
+	} else
+		next();
+});
+
+//404 Page
+app.get('*', (req, res, next) =>{
+	res.status(404).render('404');
+});
 
 //Handle a socket connection request from web client
-
 const connections = [null, null]
 io.on('connection', socket => {
 	//console.log('New WS connection')

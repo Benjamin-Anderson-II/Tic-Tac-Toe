@@ -1,0 +1,30 @@
+<div id="players-container">
+	<div class="player p1">
+		{{p1}}
+		{{#if multiplayer}}
+		<div class="connected">Connected <span></span></div>
+		<div class="ready">Ready <span></span></div>
+		{{/if}}
+	</div>
+
+	<div class="player p2">
+		{{p2}}
+		{{#if multiplayer}}
+		<div class="connected">Connected <span></span></div>
+		<div class="ready">Ready <span></span></div>
+		{{/if}}
+	</div>
+</div>
+
+<div id="info-display"></div>
+<div id="turn-display"></div>
+
+{{#if multiplayer}}
+<button id="ready-button">READY-UP</button>
+{{/if}}
+{{> board}}
+{{#if multiplayer}}
+	<button id="forfeit-button">FORFEIT</button>
+{{else}}
+	<button id="reset-button">RESET</button>
+{{/if}}

@@ -6,7 +6,9 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node server",
-    "dev": "nodemon server"
+    "dev": "nodemon server",
+    "build": "handlebars views/partials/board.handlebars -f public/boardTemplate.js",
+    "prestart": "npm run build"
   },
   "repository": {
     "type": "git",
@@ -21,6 +23,8 @@
   "homepage": "https://github.com/Benjamin-Anderson-II/CS290_Final#readme",
   "dependencies": {
     "express": "^4.18.2",
+    "express-handlebars": "^6.0.6",
+    "handlebars": "^4.7.7",
     "socket.io": "^4.5.3"
   },
   "devDependencies": {
