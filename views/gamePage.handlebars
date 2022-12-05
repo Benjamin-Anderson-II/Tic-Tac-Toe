@@ -22,7 +22,9 @@
 {{#if multiplayer}}
 <button id="ready-button">READY-UP</button>
 {{/if}}
+{{#each board}}
 {{> board}}
+{{/each}}
 {{#if multiplayer}}
 	<button id="forfeit-button">FORFEIT</button>
 {{else}}

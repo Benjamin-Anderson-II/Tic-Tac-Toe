@@ -1,10 +1,11 @@
 const rows = document.querySelectorAll('.row');
-const startButton = document.querySelector("#start-button");
+const readyButton = document.querySelector("#ready-button");
 const resetButton = document.querySelector("#reset-button");
 const forfeitButton = document.querySelector("#forfeit-button");
 const infoDisplay = document.querySelector('#info-display');
 const turnDislay = document.querySelector("#turn-display");
 
+// board for single player matches
 let board = [
 	['','',''],
 	['','',''],
@@ -15,16 +16,17 @@ const player2 = 'O';
 let currentPlayer = true; // true = player 1
 let isGameOver = false;
 let gameMode = "";
-let playerNum = 0;
+let playerNum = 0; // 0 for single player. 1 & 2 for multiplayer
 let ready  = false;
 let enemyReady = false;
+let roomId = '';
 
 getGameMode();
 
 function getGameMode(){
 	var url = window.location.href
 	var slashSplit = url.split('/');
-	if(slashSplit[slashSplit.length-2]==='vs'){
+	if(slashSplit[slashSplit.length-2]==='multiplayer'){
 		forfeitButton.addEventListener('click', forfeit)
 		startMultiPlayer();
 	}
@@ -48,7 +50,7 @@ function soloPlay(){
 function vsPlay(socket){
 	if(isGameOver) return;
 	if(!ready){
-		socket.emit('player-ready')
+		socket.emit('player-ready', roomId, playerNum)
 		ready = true
 		playerReady(playerNum);
 	}
@@ -63,27 +65,34 @@ function vsPlay(socket){
 }
 
 function playerReady(num){
-	let player = '.p' + (parseInt(num) + 1);
+	let player = '.p' + num;
+	console.log(player + ' .ready span')
 	document.querySelector(player + ' .ready span').classList.toggle('green')
 }
 
 function startMultiPlayer(){
 	gameMode = 'online-vs';
+	roomId = window.location.href.split('/')[window.location.href.split('/').length-1];
 	const socket = io();
 
-	//get you player number
+	socket.emit('test', '  -- in multi test');
+	socket.on('test', (str) => console.log(str));
+
+	playerNum = parseInt(localStorage.getItem('playerNum'));
+	localStorage.removeItem('playerNum');
+
+	//get your player number
 	socket.on('player-number', num => {
-		if(num===-1)
-			infoDisplay.innerHTML = "Sorry the server is full"
-		else {
-			playerNum = parseInt(num);
-			if(playerNum===1)currentPlayer = false;
+		console.log("  -- num:", num)
+		playerNum = parseInt(num);
+		console.log('  -- playerNum:', playerNum)
+		if(playerNum===1)currentPlayer = true;
+		else if(playerNum===2) currentPlayer = false;
 
-			console.log(playerNum)
+		console.log(playerNum)
 
-			//get other player status
-			socket.emit('check-players')
-		}
+		//get other player status
+		socket.emit('check-players', roomId)
 	})
 
 	//Another player has connected or disconnected
@@ -101,6 +110,7 @@ function startMultiPlayer(){
 
 	// Check player status
 	socket.on('check-players', players => {
+		console.log('check players!!')
 		players.forEach((p, i) => {
 			if(p.connected) playerConnectedOrDisconnected(i)
 				if(p.ready) {
@@ -111,7 +121,7 @@ function startMultiPlayer(){
 	})
 
 	// Ready button click
-	startButton.addEventListener('click', () => {
+	readyButton.addEventListener('click', () => {
 		vsPlay(socket)
 	})
 
@@ -121,11 +131,11 @@ function startMultiPlayer(){
 			rows[i].children[j].textContent = board[i][j];
 			rows[i].children[j].addEventListener('click', (event) => {
 				if(currentPlayer && ready && enemyReady){
-					socket.emit('mark', event.target.id);
+					socket.emit('mark', roomId, playerNum, event.target.id);
 					updateBoard(event.target.id, 'X')
 					event.target.textContent = 'X';
 				} else if (!currentPlayer && ready && enemyReady) {
-					socket.emit('mark', event.target.id);
+					socket.emit('mark', roomId, playerNum, event.target.id);
 					updateBoard(event.target.id, 'O');
 					event.target.textContent = 'O';
 				}
@@ -153,7 +163,7 @@ function startMultiPlayer(){
 }
 
 function playerConnectedOrDisconnected(num){
-	let player = '.p' + (parseInt(num)+1);
+	let player = '.p' + (parseInt(num));
 	if(document.querySelector(player + ' .connected span.green')) playerReady(num);
 	document.querySelector(player + ' .connected span').classList.toggle('green')
 	if(parseInt(num)===playerNum) document.querySelector(player).style.fontWeight = 'bold';
@@ -168,6 +178,10 @@ function reset(){
 		}
 	}
 	currentPlayer = !currentPlayer;
+}
+
+function forfeit(){
+	console.log("You forfeit the match loser")
 }
 
 function updateBoard(id, player){

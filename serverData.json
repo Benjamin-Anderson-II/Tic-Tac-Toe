@@ -1,13 +1,10 @@
 {
-	"1234": {
-		"topLeft": "X",
-		"topCenter": "",
-		"topRight": "",
-		"midLeft": "",
-		"midCenter": "",
-		"midRight": "",
-		"botLeft": "",
-		"botCenter": "",
-		"botRight": ""
-	}
+  "gameRooms": [
+    {
+      "roomId": "-1"
+    },
+    {
+      "roomId": "????"
+    }
+  ]
 }
