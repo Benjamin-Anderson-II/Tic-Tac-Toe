@@ -14,7 +14,7 @@ function joinLobby(event){
 	//join lobby
 	var roomId = document.getElementById('room-id-num').value;
 	var socket = io();
-	socket.emit('get-room', roomId, (response) => {
+	socket.emit('join-room', roomId, (response) => {
 		if(response) {
 			localStorage.setItem('playerNum', response);
 			window.location.href="/multiplayer/"+roomId;
