@@ -67,20 +67,23 @@ io.on('connection', socket => {
 	// on create room reequest
 	socket.on('make-room', (callback) => makeRoom(socket, callback));
 
+	// Client Room Join Request
+	socket.on('join-socket-room', (roomId) => socket.join(roomId.toString()));
+
 	//Handle player disconnect
 	socket.on('disconnect', (roomId, playerNum) => disconnect(socket, roomId, playerNum));
 
 	// On ready
-	socket.on('player-ready', (roomId, playerNum) => playerReady(socket, roomId, playerNum))
+	socket.on('player-ready', (roomId, playerNum) => playerReady(socket, roomId, playerNum));
 
 	// Check Player Connections
 	socket.on('check-players', (roomId) => checkPlayers(socket, roomId));
 
-	socket.on('test', (str) => console.log(str));
+	// On cell marked
+	socket.on('mark', (roomId, playerNum, cellId) => markCell(socket, roomId, playerNum, cellId));
 
-	socket.on('mark', (roomId, playerNum, cellId) => markCell(socket, roomId, playerNum, cellId))
-
-	socket.on('game-status', isGameOver => gameStatus(socket, isGameOver))
+	// Check Game Status
+	socket.on('game-status', (isGameOver, roomId) => gameStatus(socket, isGameOver));
 })
 
 function makeRoom(socket, callback){
@@ -101,15 +104,15 @@ function makeRoom(socket, callback){
 			"p1_ready": false,
 			"player2": false,
 			"p2_ready": false,
-			"topLeft": "",
-			"topCenter": "",
-			"topRight": "",
-			"midLeft": "",
-			"midCenter": "",
-			"midRight": "",
-			"botLeft": "",
-			"botCenter": "",
-			"botRight": ""
+			"top-left": "",
+			"top-center": "",
+			"top-right": "",
+			"mid-left": "",
+			"mid-center": "",
+			"mid-right": "",
+			"bot-left": "",
+			"bot-center": "",
+			"bot-right": ""
 		})
 		serverData.save();
 		callback({roomId: id, playerNum: 1});
@@ -131,11 +134,11 @@ function checkPlayers(socket, roomId){
 	var roomData = serverData.get("gameRooms").find(o => o.roomId===roomId);
 	players.push({connected: roomData.player1, ready: roomData.p1_ready});
 	players.push({connected: roomData.player2, ready: roomData.p2_ready});
-	socket.emit('check-players', players);
+	socket.to(roomId.toString()).emit('check-players', players);
 }
 
 function playerReady(socket, roomId, playerNum){
-	socket.emit('enemy-ready', playerNum);
+	socket.to(roomId.toString()).emit('enemy-ready', playerNum);
 	var roomData = serverData.get("gameRooms").find(o => o.roomId===roomId);
 	if(playerNum===1) roomData.p1_ready = true;
 	else if (playerNum===2) roomData.p2_ready = true;
@@ -149,12 +152,12 @@ function markCell(socket, roomId, playerNum, cellId){
 	var gameData = serverData.get("gameRooms").find(o => o.roomId===roomId);
 	gameData[cellId] = (parseInt(playerNum)===1) ? 'X' : 'O';
 	serverData.save();
-	socket.broadcast.emit('mark', cellId);
+	io.to(roomId.toString()).emit('mark', cellId); //broadcast to all in room
 }
 
-function gameStatus(socket, isGameOver){
+function gameStatus(socket, roomId, isGameOver){
 	if(isGameOver) console.log('game is over');
-	socket.broadcast.emit('game-status', isGameOver)
+	io.to(roomId.toString()).emit('game-status', isGameOver); //broadcast to all in room
 }
  
 function disconnect(socket, roomId, playerNum) {
@@ -169,3 +172,11 @@ function disconnect(socket, roomId, playerNum) {
 		serverData.save();
 	}
 }
+
+/**Things Left To Do
+ * put each gameRoom in its own socket.io room
+ * move all computation to server-side
+ * fix bugs
+ *  - list here
+ * pretty up
+*/

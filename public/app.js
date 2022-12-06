@@ -71,15 +71,21 @@ function playerReady(num){
 }
 
 function startMultiPlayer(){
+	// Set Game Mode
 	gameMode = 'online-vs';
+
+	// Get roomId from URL
 	roomId = window.location.href.split('/')[window.location.href.split('/').length-1];
+	
+	// Instantiate Socket
 	const socket = io();
 
-	socket.emit('test', '  -- in multi test');
-	socket.on('test', (str) => console.log(str));
-
+	// Get playerNum from localStorage
 	playerNum = parseInt(localStorage.getItem('playerNum'));
 	localStorage.removeItem('playerNum');
+
+	// Join SocketIO Room
+	socket.emit('join-socket-room', roomId)
 
 	//get your player number
 	socket.on('player-number', num => {
@@ -141,7 +147,7 @@ function startMultiPlayer(){
 				}
 				event.target.disabled = true;
 				checkWinner();
-				socket.emit('game-status', isGameOver);
+				socket.emit('game-status', isGameOver, roomId);
 			});
 		}
 	}
