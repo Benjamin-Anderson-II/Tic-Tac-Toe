@@ -33,7 +33,18 @@ app.get('/home', (req, res, next) => {
 
 //Solo Play Page
 app.get('/solo', (req, res, next) => {
-	res.status(200).render('gamePage', {multiplayer: false, p1: "User", p2: "Computer"});
+	var board = {
+		topLeft: "",
+		topCenter: "",
+		topRight: "",
+		midLeft: "",
+		midCenter: "",
+		midRight: "",
+		botLeft: "",
+		botCenter: "",
+		botRight: ""
+	}
+	res.status(200).render('gamePage', {multiplayer: false, p1: "User", p2: "Computer", board: [board]});
 });
 
 //Multiplayer Page
