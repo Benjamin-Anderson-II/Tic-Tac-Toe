@@ -38,14 +38,18 @@ app.get('/solo', (req, res, next) => {
 
 //Multiplayer Page
 app.get('/multiplayer/:n', (req, res, next) => {
-	var n = req.params.n;
-	if(parseInt(n)!==-1){ // make sure it isn't trying to load the filler room
-		var gameData = serverData.get("gameRooms").find(o => o.roomId===n);
-		if(gameData){
-			console.log("== A player has joined game lobby", n + '.');
-			res.status(200).render('gamePage', {multiplayer: true, p1: "Player 1", p2: "Player 2", board: [gameData]});
-		} else next();
-	} else next();
+	try{
+		var n = req.params.n;
+		if(parseInt(n)!==-1){ // make sure it isn't trying to load the filler room
+			var {roomId: _, player1: _, player2: _, p1_ready: _, p2_ready: _, score: _, ...boardData} = serverData.get("gameRooms").find(o => o.roomId===n);
+			if(boardData){
+				console.log("== A player has joined game lobby", n + '.');
+				res.status(200).render('gamePage', {multiplayer: true, p1: "Player 1", p2: "Player 2", board: [boardData]});
+			} else res.redirect('/404');
+		} else res.redirect('/404');
+	} catch (e) {
+		res.redirect('/404');
+	}
 });
 
 //404 Page
@@ -58,28 +62,40 @@ io.on('connection', socket => {
 	console.log('New WS connection')
 
 	// on join room request
-	socket.on('join-room', (roomId, callback) => joinRoom(socket, roomId, callback));
+	socket.on('join-room', (roomId, callback) => joinRoom(roomId, callback));
 
 	// on create room reequest
-	socket.on('make-room', (callback) => makeRoom(socket, callback));
+	socket.on('make-room', (callback) => makeRoom(callback));
+
+	// Get Player Num
+	socket.on('get-player-num', (roomId, callback) => getPlayerNum(roomId, callback));
 
 	// Client Room Join Request
 	socket.on('join-socket-room', (roomId, playerNum) => joinSocketRoom(socket, roomId, playerNum));
 
+	// Get Ready Status
+	socket.on('get-ready-status', (roomId, callback) => getReadyStatus(roomId, callback))
+
 	// On ready
-	socket.on('player-ready', (roomId, playerNum) => playerReady(socket, roomId, playerNum));
+	socket.on('player-ready', (roomId, playerNum, callback) => playerReady(socket, roomId, playerNum, callback));
 
 	// Initiate Game Logic
 	socket.on('mark', (roomId, playerNum, cellId) => markCell(socket, roomId, playerNum, cellId));
 
-	// Check Game Status
-	socket.on('game-status', (isGameOver, roomId) => gameStatus(socket, isGameOver));
+	// Get Score
+	socket.on('get-score', (roomId, callback) => getScore(roomId, callback));
+
+	// On Clear Board
+	socket.on('clear-board', (roomId) => clearBoard(roomId));
+
+	// On Player Forfeit
+	socket.on('forfeit', (roomId, playerNum) => forfeit(socket, roomId, playerNum))
 
 	//Handle player disconnect
 	socket.on('disconnecting', () => disconnecting(socket));
 })
 
-function makeRoom(socket, callback){
+function makeRoom(callback){
 	//reinitialize serverData
 	serverData = editJsonFile('./serverData.json');
 
@@ -100,23 +116,30 @@ function makeRoom(socket, callback){
 			"p1_ready": false,
 			"player2": false,
 			"p2_ready": false,
-			"top-left": "",
-			"top-center": "",
-			"top-right": "",
-			"mid-left": "",
-			"mid-center": "",
-			"mid-right": "",
-			"bot-left": "",
-			"bot-center": "",
-			"bot-right": ""
+			"score": {
+				"p1": 0,
+				"p2": 0
+			},
+			"topLeft": "",
+			"topCenter": "",
+			"topRight": "",
+			"midLeft": "",
+			"midCenter": "",
+			"midRight": "",
+			"botLeft": "",
+			"botCenter": "",
+			"botRight": ""
 		})
 		serverData.save();
 		callback({roomId: id, playerNum: 1});
 	}
 }
 
-function joinRoom(socket, id, callback){
-	var roomData = serverData.get("gameRooms").find(o => o.roomId===id);
+function joinRoom(roomId, callback){
+	//reinitialize serverData
+	serverData = editJsonFile('./serverData.json');
+
+	var roomData = serverData.get("gameRooms").find(o => o.roomId===roomId);
 	if(roomData && !(roomData.player1 && roomData.player2)) // room is avalable and not full
 		if(roomData.player1){
 			callback(2);
@@ -127,6 +150,11 @@ function joinRoom(socket, id, callback){
 	else {
 		callback(false);
 	}
+}
+
+function getPlayerNum(roomId, callback) {
+	var gameData = serverData.get('gameRooms').find(o => o.roomId === roomId);
+	callback((!gameData.player1) ? 1 : 2);
 }
 
 function joinSocketRoom(socket, roomId, playerNum){
@@ -142,14 +170,29 @@ function joinSocketRoom(socket, roomId, playerNum){
 	else if(playerNum===2)
 		roomData.player2 = socket.id;
 	serverData.save();
+
+	io.to(roomId).emit('status-change', {
+				player1: roomData.player1, 
+				player2: roomData.player2, 
+				p1_ready: roomData.p1_ready, 
+				p2_ready: roomData.p2_ready});
 }
 
-function playerReady(socket, roomId, playerNum){
-	socket.to(roomId.toString()).emit('enemy-ready', playerNum);
+function getReadyStatus(roomId, callback) {
+	var gameData = serverData.get('gameRooms').find(o => o.roomId===roomId);
+	callback({p1_ready: gameData.p1_ready, p2_ready: gameData.p2_ready})
+}
+
+function playerReady(socket, roomId, playerNum, callback){
+	socket.to(roomId.toString()).emit('enemy-ready');
 	var roomData = serverData.get("gameRooms").find(o => o.roomId===roomId);
-	if(playerNum===1) roomData.p1_ready = true;
-	else if (playerNum===2) roomData.p2_ready = true;
+	var {roomId: _, player1: _, player2: _, p1_ready: _, p2_ready: _, score: _, ...boardData} = roomData;
+	if(playerNum===1)
+		roomData.p1_ready = true;
+	else if (playerNum===2)
+		roomData.p2_ready = true;	
 	serverData.save();
+	callback(boardData)
 }
 
 function markCell(socket, roomId, playerNum, cellId){
@@ -159,13 +202,13 @@ function markCell(socket, roomId, playerNum, cellId){
 	serverData.save();
 
 	// Inform client boards of change
-	io.to(roomId.toString()).emit('mark', cellId, gameData[cellId]);
+	var {roomId: _, player1: _, player2: _, p1_ready: _, p2_ready: _, score: _, ...boardData} = gameData;
+	io.to(roomId.toString()).emit('mark', cellId, gameData[cellId], boardData);
 
 	// make game board from JSON data
-	let board = [gameData['top-left'], gameData['top-center'], gameData['top-right'],
-				 gameData['mid-left'], gameData['mid-center'], gameData['mid-right'],
-				 gameData['bot-left'], gameData['bot-center'], gameData['bot-right']];
-
+	let board = [gameData['topLeft'], gameData['topCenter'], gameData['topRight'],
+				 gameData['midLeft'], gameData['midCenter'], gameData['midRight'],
+				 gameData['botLeft'], gameData['botCenter'], gameData['botRight']];
 	// check if game over
 	if((board[0] && (board[0] === board[1] && board[1] === board[2])) //top row
 	|| (board[3] && (board[3] === board[4] && board[4] === board[5])) //middle row
@@ -176,14 +219,64 @@ function markCell(socket, roomId, playerNum, cellId){
 	|| (board[2] && (board[2] === board[5] && board[5] === board[8])) //right column
 
 	|| (board[0] && (board[0] === board[4] && board[4] === board[8])) //top left -> bottom right diagonal
-	|| (board[2] && (board[2] === board[4] && board[4] === board[6])))//top-left -> bottom left diagonal
+	|| (board[2] && (board[2] === board[4] && board[4] === board[6]))){//top-left -> bottom left diagonal
 		//Tell clients who won
+		console.log('game-over')
 		io.to(roomId.toString()).emit('game-over', playerNum);
+
+		//update score in serverData
+		gameData['score']['p'+playerNum]++;
+		serverData.save();
+	} else {
+
+		//check for cat's game
+		var cat = true;
+		for(var i = 0; i < board.length; i++)
+			if(!board[i]) cat = false;
+		if(cat){console.log("cat's game"); io.to(roomId).emit('game-over', 0);}
+	}
 }
 
 function gameStatus(socket, roomId, isGameOver){
 	if(isGameOver) console.log('game is over');
 	io.to(roomId.toString()).emit('game-status', isGameOver); //broadcast to all in room
+}
+
+function getScore(roomId, callback){
+	var roomData = serverData.get("gameRooms").find(o => o.roomId===roomId);
+	callback(roomData.score)
+}
+
+function forfeit(socket, roomId, playerNum) {
+	var roomData = serverData.get("gameRooms").find(o => o.roomId===roomId);
+	var enemyNum = (playerNum===1) ? 2 : 1;
+	roomData['score']['p'+enemyNum]++;
+	getScore(roomId, (response) => {
+		io.to(roomId).emit('update-score', response)
+	})
+}
+
+function clearBoard(roomId){
+	//clear the server board
+	var roomData = serverData.get("gameRooms").find(o => o.roomId===roomId);
+	roomData.topLeft = "";
+	roomData.topCenter = "";
+	roomData.topRight = "";
+	roomData.midLeft = "";
+	roomData.midCenter = "";
+	roomData.midRight = "";
+	roomData.botLeft = "";
+	roomData.botCenter = "";
+	roomData.botRight = "";
+	serverData.save();
+	
+	//"un ready" players
+	roomData.p1_ready = false;
+	roomData.p2_ready = false;
+
+	//emit clearboard to client
+	var {roomId: _, player1: _, player2: _, p1_ready: _, p2_ready: _, score: _, ...boardData} = roomData;
+	io.to(roomId).emit('clear-board', boardData);
 }
 
 function disconnecting(socket){
@@ -193,12 +286,18 @@ function disconnecting(socket){
 		var roomData = serverData.get("gameRooms").find(o => o.roomId === roomId);
 		if(roomData.player1 === socket.id){
 			roomData.player1 = false;
-			socket.to(roomId.toString()).emit('set-player-num', 1);
+			roomData.p1_ready = false;
 		} else if (roomData.player2 === socket.id){
 			roomData.player2 = false;
-			socket.to(roomId.toString()).emit('set-player-num', 2);
+			roomData.p2_ready = false;
 		}
 		serverData.save();
+
+		socket.to(roomId).emit('status-change', {
+				player1: roomData.player1, 
+				player2: roomData.player2, 
+				p1_ready: roomData.p1_ready, 
+				p2_ready: roomData.p2_ready});
 
 		// Delete room if no one is in it.
 		if(!roomData.player1 && !roomData.player2){
@@ -222,11 +321,10 @@ function disconnecting(socket){
 }
 
 /**Things Left To Do
- * fix bugs
- *  - can still click other players tiles
- *  - can click multiple times
+ * forfeit button
+ * keep score
+ * add play again modal
  * pretty up
  *  - FRONT PAGE:
  * 		- ENTER corresponds to JOIN button
- *  - add play again modal
 */

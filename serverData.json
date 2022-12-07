@@ -5,22 +5,6 @@
     },
     {
       "roomId": "????"
-    },
-    {
-      "roomId": "0000",
-      "player1": "d4M79tA68bBSTyP3AAAH",
-      "p1_ready": false,
-      "player2": false,
-      "p2_ready": false,
-      "top-left": "",
-      "top-center": "",
-      "top-right": "",
-      "mid-left": "",
-      "mid-center": "",
-      "mid-right": "",
-      "bot-left": "",
-      "bot-center": "",
-      "bot-right": ""
     }
   ]
 }

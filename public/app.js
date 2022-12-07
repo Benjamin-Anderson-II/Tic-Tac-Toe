@@ -1,9 +1,6 @@
-const rows = document.querySelectorAll('.row');
-const readyButton = document.querySelector("#ready-button");
-const resetButton = document.querySelector("#reset-button");
-const forfeitButton = document.querySelector("#forfeit-button");
-const infoDisplay = document.querySelector('#info-display');
-const turnDislay = document.querySelector("#turn-display");
+import startMultiPlayer from './multiPlayer.js'
+
+const homeButtons = document.querySelectorAll('.return-home-button');
 
 // board for single player matches
 let board = [
@@ -20,22 +17,30 @@ let ready  = false;
 let enemyReady = false;
 let roomId = '';
 
-getGameMode();
+init();
 
-function getGameMode(){
+function init(){
+	// Set Up General Event Listeners
+	for(var i = 0; i < homeButtons.length; i++){
+		homeButtons[i].addEventListener('click', returnHome)
+	}
+
+	// Get Game Mode
 	var url = window.location.href
 	var slashSplit = url.split('/');
 	if(slashSplit[slashSplit.length-2]==='multiplayer'){
-		forfeitButton.addEventListener('click', forfeit)
 		startMultiPlayer();
 	}
 	else if(slashSplit[slashSplit.length-1]==='solo') {
-		resetButton.addEventListener('click', reset);
-		soloPlay();
+		startSoloPlay();
 	}
 }
 
-function soloPlay(){
+function returnHome(){
+	window.location.href="/";
+}
+
+function startSoloPlay(){
 	gameMode = 'solo'
 	for(var i = 0; i < 3; i++){
 		for(var j  = 0; j < 3; j++){
@@ -44,89 +49,6 @@ function soloPlay(){
 		}
 	}
 	//add solo vs comp functionality
-}
-
-function vsPlay(socket){
-	if(isGameOver) return;
-	if(!ready){
-		socket.emit('player-ready', roomId, playerNum)
-		ready = true
-		playerReady(playerNum);
-	}
-	if(enemyReady) {
-		if(currentPlayer===true){
-			turnDislay.textContent = "Your Go"
-		}
-		if(currentPlayer===false){
-			turnDislay.textContent = "Enemy's Go"
-		}
-	}
-}
-
-function playerReady(num){
-	let player = '.p' + num;
-	console.log(player + ' .ready span')
-	document.querySelector(player + ' .ready span').classList.toggle('green')
-}
-
-function startMultiPlayer(){
-	// Get roomId from URL
-	roomId = window.location.href.split('/')[window.location.href.split('/').length-1];
-	
-	// Instantiate Socket
-	const socket = io();
-
-	// Set playerNum (called when disconnecting)
-	socket.on('set-player-num', num => localStorage.setItem('playerNum', num));
-
-	// Get playerNum from localStorage
-	playerNum = parseInt(localStorage.getItem('playerNum'));
-
-	// Join SocketIO Room
-	socket.emit('join-socket-room', roomId, playerNum)
-
-	// On enemy ready
-	socket.on('enemy-ready', num => {
-		enemyReady = true;
-		playerReady(num);
-		if(ready) vsPlay(socket)
-	})
-
-	// Ready button click
-	readyButton.addEventListener('click', () => {
-		vsPlay(socket)
-	})
-
-	// setup tile listeners
-	for(var i = 0; i < 3; i++){
-		for(var j  = 0; j < 3; j++){
-			rows[i].children[j].textContent = board[i][j];
-			rows[i].children[j].addEventListener('click', (event) => {
-				if(ready && enemyReady){
-					socket.emit('mark', roomId, playerNum, event.target.id);
-					event.target.disabled = true;
-				}
-			});
-		}
-	}
-
-	// on mark recieved
-	socket.on('mark', (id, val) => {
-		document.getElementById(id).textContent = val;
-	})
-
-	socket.on('game-status', over => {
-		if(over) disableBoard();
-	})
-
-	socket.on('game-over', () => disableBoard())
-}
-
-function playerConnectedOrDisconnected(num){
-	let player = '.p' + (parseInt(num));
-	if(document.querySelector(player + ' .connected span.green')) playerReady(num);
-	document.querySelector(player + ' .connected span').classList.toggle('green')
-	if(parseInt(num)===playerNum) document.querySelector(player).style.fontWeight = 'bold';
 }
 
 function reset(){
@@ -225,7 +147,3 @@ function checkWinner(){
 	console.log("Cat's Game")
 	isGameOver = true;
 }
-
-/** What to do Next
- * 
-*/

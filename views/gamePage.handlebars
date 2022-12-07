@@ -1,18 +1,10 @@
 <div id="players-container">
-	<div class="player p1">
-		{{p1}}
-		{{#if multiplayer}}
-		<div class="connected">Connected <span></span></div>
-		<div class="ready">Ready <span></span></div>
-		{{/if}}
+	<div id="p1">
+		{{> player p=p1 multiplayer=multiplayer}}
 	</div>
 
-	<div class="player p2">
-		{{p2}}
-		{{#if multiplayer}}
-		<div class="connected">Connected <span></span></div>
-		<div class="ready">Ready <span></span></div>
-		{{/if}}
+	<div id="p2">
+		{{> player p=p2 mulitplayer=multiplayer}}
 	</div>
 </div>
 
@@ -25,8 +17,13 @@
 {{#each board}}
 {{> board}}
 {{/each}}
-{{#if multiplayer}}
-	<button id="forfeit-button">FORFEIT</button>
-{{else}}
-	<button id="reset-button">RESET</button>
-{{/if}}
+
+<button id="forfeit-button">FORFEIT</button>
+
+<div id="modal-backdrop" class="hidden"></div>
+<div id="play-again-modal" class="hidden">
+	<h2 id="winner"></h2>
+	<h3>Play Again?</h3>
+	<button id="play-again-button">Yes</button>
+	<button class="return-home-button">No</button>
+</div>

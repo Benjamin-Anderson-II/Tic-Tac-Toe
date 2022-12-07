@@ -16,7 +16,6 @@ function joinLobby(event){
 	var socket = io();
 	socket.emit('join-room', roomId, (response) => {
 		if(response) {
-			localStorage.setItem('playerNum', response);
 			window.location.href="/multiplayer/"+roomId;
 		}
 		else
@@ -29,7 +28,6 @@ function createLobby(event){
 	var socket = io();
 	socket.emit('make-room', (response) => {
 		if(response){
-			localStorage.setItem('playerNum', response.playerNum);
 			window.location.href = '/multiplayer/'+response.roomId;
 		} else
 			console.log('server is full');

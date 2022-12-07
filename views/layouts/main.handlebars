@@ -8,14 +8,20 @@
 
 		<script src="https://cdn.jsdelivr.net/npm/handlebars@latest/dist/handlebars.js"></script>
 		<script src="/boardTemplate.js" charset="utf-8" defer></script>
+		<script src="/playerTemplate.js" charset="utf-8" defer></script>
 		<script src="/index.js" charset="utf-8" defer></script>
-		<script src="/app.js" charset="utf-8" defer></script>
+		<script type="module"src="/app.js" charset="utf-8" defer></script>
+		<script type="module" src="/singlePlayer.js" charset="utf-8" defer></script>
+		<script type="module" src="/multiPlayer.js" charset="utf-8" defer></script>
 		<script src="/socket.io/socket.io.js"></script>
 		<title>TicTacToe Versus</title>
 	</head>
 	<body>
 		<header>
 			<h1>Tic-Tac-Toe Versus</h1>
+			<div id="home-button-container">
+				<button class="return-home-button">HOME</button>
+			</div>
 		</header>
 		{{{body}}}
 	</body>

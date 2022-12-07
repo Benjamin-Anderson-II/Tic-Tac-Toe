@@ -7,7 +7,7 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node server",
     "dev": "nodemon server",
-    "build": "handlebars views/partials/board.handlebars -f public/boardTemplate.js",
+    "build": "handlebars views/partials/board.handlebars -f public/boardTemplate.js && handlebars views/partials/player.handlebars -f public/playerTemplate.js",
     "prestart": "npm run build"
   },
   "repository": {
