@@ -89,7 +89,7 @@ function computerBestMove(){
 		// Is the spot available?
 		if(!(board[currCellID])){
 			board[currCellID] = computer;
-			var score = minimax(board, 0, false);
+			var score = minimax(board, 0, -Infinity, Infinity, false);
 			board[currCellID] = '';
 			if(score > bestScore) {
 				bestScore = score;
@@ -109,7 +109,7 @@ var scores = {
 	tie: 0
 }
 
-function minimax(board, depth, isMaximizing){
+function minimax(board, depth, alpha, beta, isMaximizing){
 	var result = checkWinner();
 	if(result){
 		return scores[result];
@@ -122,9 +122,12 @@ function minimax(board, depth, isMaximizing){
 			// Is the spot available?
 			if(!(board[currCellID])){
 				board[currCellID] = computer;
-				var score = minimax(board, depth+1, false);
+				var score = minimax(board, depth+1, alpha, beta, false);
 				board[currCellID] = '';
-				bestScore = Math.max(score, bestScore)
+				bestScore = Math.max(score, bestScore);
+				alpha = Math.max(alpha, score);
+				if(beta <= alpha)
+					break;
 			}
 		}
 		return bestScore;
@@ -135,9 +138,12 @@ function minimax(board, depth, isMaximizing){
 			// Is the spot available?
 			if(!(board[currCellID])){
 				board[currCellID] = user;
-				var score = minimax(board, depth+1, true);
+				var score = minimax(board, depth+1, alpha, beta, true);
 				board[currCellID] = '';
 				bestScore = Math.min(score, bestScore)
+				beta = Math.min(beta, score);
+				if(beta <= alpha)
+					break;
 			}
 		}
 		return bestScore;
