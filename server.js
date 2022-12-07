@@ -321,9 +321,6 @@ function disconnecting(socket){
 }
 
 /**Things Left To Do
- * forfeit button
- * keep score
- * add play again modal
  * pretty up
  *  - FRONT PAGE:
  * 		- ENTER corresponds to JOIN button

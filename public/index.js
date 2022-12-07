@@ -12,7 +12,7 @@ if(slashSplit[slashSplit.length-1]==='home'){
 function joinLobby(event){
 	//ask server if lobby exists
 	//join lobby
-	var roomId = document.getElementById('room-id-num').value;
+	var roomId = document.getElementById('room-id-num').value.padStart(4, '0');
 	var socket = io();
 	socket.emit('join-room', roomId, (response) => {
 		if(response) {
