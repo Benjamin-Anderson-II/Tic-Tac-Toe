@@ -44,8 +44,13 @@ app.get('/solo', (req, res, next) => {
 		botCenter: "",
 		botRight: ""
 	}
-	res.status(200).render('gamePage', {multiplayer: false, p1: "User", p2: "Computer", board: [board]});
+	res.status(200).render('gamePage', {multiplayer: false, p1: "Human", p2: "Computer", board: [board]});
 });
+
+//Multiplayer Select Page
+app.get('/multiplayer', (req, res, next) => {
+	res.status(200).render('multiplayerSelectPage')
+})
 
 //Multiplayer Page
 app.get('/multiplayer/:n', (req, res, next) => {
@@ -55,7 +60,7 @@ app.get('/multiplayer/:n', (req, res, next) => {
 			var {roomId: _, player1: _, player2: _, p1_ready: _, p2_ready: _, score: _, ...boardData} = serverData.get("gameRooms").find(o => o.roomId===n);
 			if(boardData){
 				console.log("== A player has joined game lobby", n + '.');
-				res.status(200).render('gamePage', {multiplayer: true, p1: "Player 1", p2: "Player 2", board: [boardData]});
+				res.status(200).render('gamePage', {multiplayer: true, roomId: n, p1: "Player 1", p2: "Player 2", board: [boardData]});
 			} else res.redirect('/404');
 		} else res.redirect('/404');
 	} catch (e) {
@@ -67,6 +72,9 @@ app.get('/multiplayer/:n', (req, res, next) => {
 app.get('*', (req, res, next) =>{
 	res.status(404).render('404');
 });
+
+
+// ---- Socket.IO ----
 
 //Handle a socket connection request from web client
 io.on('connection', socket => {
@@ -106,6 +114,10 @@ io.on('connection', socket => {
 	socket.on('disconnecting', () => disconnecting(socket));
 })
 
+/**
+ * Makes a room in serverData (id is lowest number available in server)
+ *  - server can hold 10000 games
+*/
 function makeRoom(callback){
 	//reinitialize serverData
 	serverData = editJsonFile('./serverData.json');
@@ -146,6 +158,9 @@ function makeRoom(callback){
 	}
 }
 
+/**
+ * Attempts to join a room given  a room ID
+*/
 function joinRoom(roomId, callback){
 	//reinitialize serverData
 	serverData = editJsonFile('./serverData.json');
@@ -163,11 +178,18 @@ function joinRoom(roomId, callback){
 	}
 }
 
+/**
+ * Returns a players number upon request
+*/
 function getPlayerNum(roomId, callback) {
 	var gameData = serverData.get('gameRooms').find(o => o.roomId === roomId);
 	callback((!gameData.player1) ? 1 : 2);
 }
 
+/**
+ * Puts player in a socketio room
+ * emits the change in status of all players to all players
+*/
 function joinSocketRoom(socket, roomId, playerNum){
 	console.log("== join socket room pNum:",playerNum)
 	var roomData = serverData.get("gameRooms").find(o => o.roomId===roomId);
@@ -189,11 +211,19 @@ function joinSocketRoom(socket, roomId, playerNum){
 				p2_ready: roomData.p2_ready});
 }
 
+/**
+ * Returns the ready status of all players upon request
+*/
 function getReadyStatus(roomId, callback) {
 	var gameData = serverData.get('gameRooms').find(o => o.roomId===roomId);
 	callback({p1_ready: gameData.p1_ready, p2_ready: gameData.p2_ready})
 }
 
+/**
+ * Handles a player clicking the ready button
+ * Emits to all other players in room that the player is ready
+ * returns the boardData
+*/
 function playerReady(socket, roomId, playerNum, callback){
 	socket.to(roomId.toString()).emit('enemy-ready');
 	var roomData = serverData.get("gameRooms").find(o => o.roomId===roomId);
@@ -206,6 +236,11 @@ function playerReady(socket, roomId, playerNum, callback){
 	callback(boardData)
 }
 
+/**
+ * Handles a cell being marked
+ *  - checks to see if there was a winner
+ *    - if winner update serverData's score count accordingly
+*/
 function markCell(socket, roomId, playerNum, cellId){
 	// Update sever with new info
 	var gameData = serverData.get("gameRooms").find(o => o.roomId===roomId);
@@ -232,7 +267,6 @@ function markCell(socket, roomId, playerNum, cellId){
 	|| (board[0] && (board[0] === board[4] && board[4] === board[8])) //top left -> bottom right diagonal
 	|| (board[2] && (board[2] === board[4] && board[4] === board[6]))){//top-left -> bottom left diagonal
 		//Tell clients who won
-		console.log('game-over')
 		io.to(roomId.toString()).emit('game-over', playerNum);
 
 		//update score in serverData
@@ -244,20 +278,22 @@ function markCell(socket, roomId, playerNum, cellId){
 		var cat = true;
 		for(var i = 0; i < board.length; i++)
 			if(!board[i]) cat = false;
-		if(cat){console.log("cat's game"); io.to(roomId).emit('game-over', 0);}
+		if(cat)
+			io.to(roomId).emit('game-over', 0);
 	}
 }
 
-function gameStatus(socket, roomId, isGameOver){
-	if(isGameOver) console.log('game is over');
-	io.to(roomId.toString()).emit('game-status', isGameOver); //broadcast to all in room
-}
-
+/**
+ * returns the room's score data upon request
+*/
 function getScore(roomId, callback){
 	var roomData = serverData.get("gameRooms").find(o => o.roomId===roomId);
 	callback(roomData.score)
 }
 
+/**
+ * Handles player  forfiet by increasing opponent score
+*/
 function forfeit(socket, roomId, playerNum) {
 	var roomData = serverData.get("gameRooms").find(o => o.roomId===roomId);
 	var enemyNum = (playerNum===1) ? 2 : 1;
@@ -267,6 +303,12 @@ function forfeit(socket, roomId, playerNum) {
 	})
 }
 
+/**
+ * Handles Board Clear request
+ *  - Clears the serverData Board
+ *  - sets player ready values to false
+ *  - tells all players to clear their boards
+*/
 function clearBoard(roomId){
 	//clear the server board
 	var roomData = serverData.get("gameRooms").find(o => o.roomId===roomId);
@@ -290,6 +332,12 @@ function clearBoard(roomId){
 	io.to(roomId).emit('clear-board', boardData);
 }
 
+/**
+ * Handles player disconnection
+ *  - sets playr's connection and ready statuses to false
+ *  - emits a status change to all other players
+ *  - deletes the room in serverData if no one is in it anymore
+*/
 function disconnecting(socket){
 	var roomId = Array.from(socket.rooms)[1];
 	//If player disconnecting from game room
@@ -330,9 +378,3 @@ function disconnecting(socket){
 		}
 	}
 }
-
-/**Things Left To Do
- * pretty up
- *  - FRONT PAGE:
- * 		- ENTER corresponds to JOIN button
-*/
